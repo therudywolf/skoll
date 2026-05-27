@@ -1,0 +1,8 @@
+[submodule "vendor/ForestOptiLM"]
+	path = vendor/ForestOptiLM
+	url = https://github.com/therudywolf/ForestOptiLM.git
+	branch = main
+[submodule "vendor/PhotoAISorter"]
+	path = vendor/PhotoAISorter
+	url = https://github.com/therudywolf/PhotoAISorter.git
+	branch = main

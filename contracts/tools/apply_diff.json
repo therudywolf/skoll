@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "apply_diff",
+  "description": "Apply a SEARCH/REPLACE-style diff to an existing file. The diff format is documented in prompts/edit_format.md. Each block specifies the exact text to find and the replacement. Multiple blocks per call are supported. Requires human approval — the unified diff is shown.",
+  "phase": "2",
+  "kind": "write",
+  "requires_approval": true,
+  "auto_approve_default": false,
+  "path_args": ["path"],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Workspace-relative path to the existing file."
+      },
+      "blocks": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["search", "replace"],
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Exact existing text to find. Must match verbatim (including indentation)."
+            },
+            "replace": {
+              "type": "string",
+              "description": "Replacement text."
+            }
+          }
+        }
+      },
+      "reason": {
+        "type": "string",
+        "description": "One-sentence rationale shown in the approval card."
+      }
+    },
+    "required": ["path", "blocks", "reason"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["path", "blocks_applied", "blocks_failed"],
+    "properties": {
+      "path": {"type": "string"},
+      "blocks_applied": {"type": "integer"},
+      "blocks_failed": {"type": "integer"},
+      "failures": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "block_index": {"type": "integer"},
+            "reason": {"type": "string", "enum": ["search_not_found", "search_ambiguous"]}
+          }
+        }
+      }
+    }
+  }
+}

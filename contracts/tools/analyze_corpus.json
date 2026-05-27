@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "analyze_corpus",
+  "description": "Run a Map-Reduce analysis over a large folder (potentially millions of tokens) and return a structured report. Powered by ForestOptiLM. Use for questions like 'summarize all security findings across these logs' or 'what are the architectural patterns in this codebase'. Cheaper than reading every file individually; can take minutes for large corpora.",
+  "phase": "3",
+  "kind": "read",
+  "requires_approval": false,
+  "auto_approve_default": true,
+  "path_args": ["folder"],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "folder": {
+        "type": "string",
+        "description": "Workspace-relative folder to analyze."
+      },
+      "query": {
+        "type": "string",
+        "description": "What to look for. Map-Reduce will be tuned to extract this."
+      },
+      "profile": {
+        "type": "string",
+        "enum": ["quick_scan", "deep_audit", "large_corpus"],
+        "default": "deep_audit"
+      }
+    },
+    "required": ["folder", "query"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["query", "findings", "evidence_refs", "files_processed", "duration_ms"],
+    "properties": {
+      "query": {"type": "string"},
+      "findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "severity": {"type": "string", "enum": ["info", "low", "medium", "high", "critical"]},
+            "title": {"type": "string"},
+            "explanation": {"type": "string"}
+          }
+        }
+      },
+      "evidence_refs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "file": {"type": "string"},
+            "chunk": {"type": "integer"},
+            "quote": {"type": "string"}
+          }
+        }
+      },
+      "files_processed": {"type": "integer"},
+      "duration_ms": {"type": "integer"}
+    }
+  }
+}

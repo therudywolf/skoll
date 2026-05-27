@@ -1,0 +1,23 @@
+{
+  "name": "skoll-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Skoll monorepo root",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "lint": "pnpm --filter frontend lint",
+    "typecheck": "pnpm --filter frontend typecheck",
+    "test": "pnpm --filter frontend test",
+    "gen:types": "pnpm --filter frontend gen:types"
+  },
+  "devDependencies": {
+    "prettier": "3.3.3"
+  }
+}

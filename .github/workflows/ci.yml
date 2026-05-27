@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (lint + types + tests + security)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.18"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install backend deps
+        working-directory: backend
+        run: uv sync --all-extras --dev
+
+      - name: ruff (lint)
+        working-directory: backend
+        run: uv run ruff check src tests
+
+      - name: ruff (format check)
+        working-directory: backend
+        run: uv run ruff format --check src tests
+
+      - name: mypy
+        working-directory: backend
+        run: uv run mypy src
+
+      - name: pytest (unit only — no LM Studio)
+        working-directory: backend
+        run: uv run pytest -m "not integration" --maxfail=5 -q
+
+      - name: bandit
+        working-directory: backend
+        run: uv run bandit -r src -c ../pyproject.toml
+
+      - name: pip-audit
+        working-directory: backend
+        run: |
+          uv pip compile pyproject.toml -o /tmp/requirements.txt
+          uv run --with pip-audit pip-audit -r /tmp/requirements.txt
+
+  frontend:
+    name: frontend (typecheck + lint + tests + build)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.11"
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter frontend typecheck
+
+      - name: Lint
+        run: pnpm --filter frontend lint
+
+      - name: Test
+        run: pnpm --filter frontend test --run
+
+      - name: Build
+        run: pnpm --filter frontend build
+
+      - name: Audit (prod only)
+        run: pnpm audit --prod
+
+  secrets:
+    name: secret scanning
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-path: .gitleaks.toml
+
+  contracts:
+    name: contracts (schema validation)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.11"
+      - name: Validate OpenAPI
+        run: npx --yes @redocly/cli@1.25.5 lint contracts/openapi.yaml
+      - name: Validate tool JSON Schemas
+        run: |
+          npx --yes ajv-cli@5.0.0 compile -s contracts/tools/*.json

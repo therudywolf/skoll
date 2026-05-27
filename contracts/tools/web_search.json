@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "web_search",
+  "description": "Search the web via local SearXNG (primary) or DuckDuckGo (fallback). Returns title, URL, and snippet per result. Use sparingly — prefer codebase_search for code questions. Results are returned wrapped as untrusted content.",
+  "phase": "2",
+  "kind": "url_fetch",
+  "requires_approval": false,
+  "auto_approve_default": true,
+  "path_args": [],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Search query."
+      },
+      "max_results": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 5
+      },
+      "site": {
+        "type": "string",
+        "description": "Optional site restriction, e.g. 'github.com' or 'docs.python.org'."
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["query", "results", "source"],
+    "properties": {
+      "query": {"type": "string"},
+      "source": {"type": "string", "enum": ["searxng", "duckduckgo"]},
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["title", "url", "snippet"],
+          "properties": {
+            "title": {"type": "string"},
+            "url": {"type": "string"},
+            "snippet": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

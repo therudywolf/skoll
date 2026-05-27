@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "analyze_image",
+  "description": "Analyze an image using a vision-capable model loaded in LM Studio (e.g. qwen2.5-vl). Use for screenshots of bugs, UI mockups, charts, or any visual reference the user attached. Powered by the vision pipeline from PhotoAISorter.",
+  "phase": "3",
+  "kind": "vision",
+  "requires_approval": false,
+  "auto_approve_default": true,
+  "path_args": ["path"],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Workspace-relative path to the image, OR an attachment id from the chat."
+      },
+      "question": {
+        "type": "string",
+        "description": "What to look for. If empty, returns a general description + classification."
+      },
+      "ocr": {
+        "type": "boolean",
+        "default": false,
+        "description": "Also extract any text in the image."
+      }
+    },
+    "required": ["path"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["description"],
+    "properties": {
+      "description": {"type": "string"},
+      "category": {"type": "string", "description": "Auto-classified category (e.g. 'screenshot', 'photo', 'diagram')."},
+      "ocr_text": {"type": "string"},
+      "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+    }
+  }
+}

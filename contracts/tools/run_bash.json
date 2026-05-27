@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "run_bash",
+  "description": "Execute a shell command inside the sandboxed container. The sandbox has the workspace mounted, common build tools (python, node, git, pytest), and egress only to whitelisted hosts (LM Studio, SearXNG, Jina). Has a default 30s timeout. Requires human approval. Use this to run tests, install deps in the sandbox (NOT on host), or inspect runtime state.",
+  "phase": "2",
+  "kind": "shell",
+  "requires_approval": true,
+  "auto_approve_default": false,
+  "path_args": [],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "Shell command. Will be executed as `/bin/bash -c <command>` inside the sandbox. Args are NOT shell-escaped — write a safe command."
+      },
+      "working_directory": {
+        "type": "string",
+        "description": "Optional workspace-relative directory. Defaults to workspace root.",
+        "default": "."
+      },
+      "timeout_seconds": {
+        "type": "integer",
+        "description": "Max execution time. Default and max enforced by backend.",
+        "minimum": 1,
+        "maximum": 300,
+        "default": 30
+      },
+      "reason": {
+        "type": "string",
+        "description": "Shown in the approval card."
+      }
+    },
+    "required": ["command", "reason"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["exit_code", "stdout", "stderr", "duration_ms", "timed_out"],
+    "properties": {
+      "exit_code": {"type": "integer"},
+      "stdout": {"type": "string", "description": "May be truncated at backend-configured size."},
+      "stderr": {"type": "string"},
+      "duration_ms": {"type": "integer"},
+      "timed_out": {"type": "boolean"}
+    }
+  }
+}

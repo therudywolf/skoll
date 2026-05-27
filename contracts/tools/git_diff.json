@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "git_diff",
+  "description": "Return the current git diff for the workspace. Read-only — does not modify state. Use to summarize changes before committing or to understand what's currently staged vs unstaged.",
+  "phase": "3",
+  "kind": "vcs",
+  "requires_approval": false,
+  "auto_approve_default": true,
+  "path_args": [],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "staged_only": {"type": "boolean", "default": false},
+      "paths": {"type": "array", "items": {"type": "string"}, "description": "Optional path filter."}
+    },
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["diff", "files_changed"],
+    "properties": {
+      "diff": {"type": "string"},
+      "files_changed": {"type": "integer"},
+      "insertions": {"type": "integer"},
+      "deletions": {"type": "integer"}
+    }
+  }
+}

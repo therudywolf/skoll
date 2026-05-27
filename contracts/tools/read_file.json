@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "read_file",
+  "description": "Read the contents of a file inside the current workspace. Returns the file content (with secrets scrubbed) wrapped as untrusted content. Use this before editing a file, or when the user references a specific file. Paths must be relative to the workspace root.",
+  "phase": "1",
+  "kind": "read",
+  "requires_approval": false,
+  "auto_approve_default": true,
+  "path_args": ["path"],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Workspace-relative path to the file, e.g. `src/auth.py`."
+      },
+      "start_line": {
+        "type": "integer",
+        "description": "Optional 1-indexed start line.",
+        "minimum": 1
+      },
+      "end_line": {
+        "type": "integer",
+        "description": "Optional 1-indexed end line (inclusive).",
+        "minimum": 1
+      }
+    },
+    "required": ["path"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["path", "content", "lines_total", "truncated"],
+    "properties": {
+      "path": {"type": "string"},
+      "content": {"type": "string", "description": "Wrapped in <untrusted_content> tags."},
+      "lines_total": {"type": "integer"},
+      "truncated": {"type": "boolean"},
+      "secrets_redacted": {"type": "integer", "description": "Count of redactions applied."}
+    }
+  }
+}

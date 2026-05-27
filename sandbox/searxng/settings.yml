@@ -1,0 +1,65 @@
+# SearXNG settings for Skoll local dev.
+# Loaded by the docker-compose service from sandbox/searxng/settings.yml.
+
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "Skoll local search"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "all"
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "change-me-in-local-env-${SEARXNG_SECRET:-replace_this}"
+  limiter: false   # set to true behind a reverse proxy with rate limiting
+  image_proxy: false
+  http_protocol_version: "1.1"
+
+ui:
+  static_use_hash: true
+  default_theme: simple
+  default_locale: en
+
+# Restrict to LAN by default; agent in sandbox reaches us via the docker network.
+botdetection:
+  ip_limit:
+    link_token: false
+
+outgoing:
+  request_timeout: 3.0
+  max_request_timeout: 6.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+
+# Engines: keep a small curated set that doesn't require API keys.
+# Disable the ones that ask for them.
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: brave
+    disabled: false           # Brave's free SerpAPI-style is via web scraping here, not the paid API
+  - name: wikipedia
+    disabled: false
+  - name: github
+    disabled: false
+  - name: stackoverflow
+    disabled: false
+  - name: arxiv
+    disabled: false
+  - name: pypi
+    disabled: false
+  - name: npm
+    disabled: false

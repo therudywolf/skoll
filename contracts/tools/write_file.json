@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "write_file",
+  "description": "Create or fully overwrite a file in the workspace. For modifying parts of existing files, prefer `apply_diff`. Requires human approval. The diff between old and new content is shown to the user before writing.",
+  "phase": "2",
+  "kind": "write",
+  "requires_approval": true,
+  "auto_approve_default": false,
+  "path_args": ["path"],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Workspace-relative path. Parent directories are created if missing."
+      },
+      "content": {
+        "type": "string",
+        "description": "Full new content of the file."
+      },
+      "reason": {
+        "type": "string",
+        "description": "One-sentence rationale shown to the user in the approval card."
+      }
+    },
+    "required": ["path", "content", "reason"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["path", "bytes_written", "created"],
+    "properties": {
+      "path": {"type": "string"},
+      "bytes_written": {"type": "integer"},
+      "created": {"type": "boolean", "description": "True if the file did not exist before."}
+    }
+  }
+}

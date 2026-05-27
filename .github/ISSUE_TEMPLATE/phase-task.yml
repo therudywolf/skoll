@@ -1,0 +1,62 @@
+name: Phase task
+description: A scoped piece of work from docs/ROADMAP.md
+title: "[phase-N.X] <short>"
+labels: ["ready"]
+body:
+  - type: input
+    id: phase
+    attributes:
+      label: Phase
+      description: 0, 1, 2, or 3
+    validations:
+      required: true
+
+  - type: input
+    id: roadmap_id
+    attributes:
+      label: Roadmap item id
+      description: e.g. 1.6
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What does "done" look like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to touch
+      description: Path list. AI agents — start here.
+      placeholder: |
+        - backend/src/skoll/...
+        - contracts/tools/...
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete, testable. Include the test command.
+      placeholder: |
+        - [ ] `pytest tests/test_xxx.py` passes
+        - [ ] curl example returns expected JSON
+    validations:
+      required: true
+
+  - type: textarea
+    id: security
+    attributes:
+      label: Security considerations
+      description: New attack surface? Mitigations?
+    validations:
+      required: true
+
+  - type: textarea
+    id: deps
+    attributes:
+      label: Dependencies / blockers
+      description: Issues that must finish first

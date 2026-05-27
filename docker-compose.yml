@@ -1,0 +1,48 @@
+# Skoll dev stack
+# Production deployment lives elsewhere; this is for local development.
+
+services:
+  searxng:
+    image: searxng/searxng:2026.05.20-bb1d2dd
+    container_name: skoll-searxng
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8089:8080"
+    volumes:
+      - ./sandbox/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8089/
+      - INSTANCE_NAME=skoll-search
+    networks:
+      - skoll-net
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: skoll-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - skoll-net
+
+  sandbox:
+    # Built locally from sandbox/Dockerfile; intended to be invoked
+    # programmatically by the backend, not as a long-running service.
+    # Backend launches one ephemeral container per agent session.
+    image: skoll/sandbox:dev
+    container_name: skoll-sandbox-prototype
+    build:
+      context: ./sandbox
+    # Production agents pin --runtime=runsc (gVisor). For dev without gVisor,
+    # the backend falls back to default runc with a loud warning.
+    runtime: ${SKOLL_SANDBOX_RUNTIME:-runc}
+    profiles: ["prototype-only"]  # not started by default `docker compose up`
+    networks:
+      - skoll-net
+
+  # backend and frontend are NOT in docker-compose for dev — run them locally
+  # via `make backend` and `make frontend` for fast hot reload.
+  # The production compose file (`docker-compose.prod.yml`) wraps them.
+
+networks:
+  skoll-net:
+    driver: bridge

@@ -1,0 +1,376 @@
+openapi: 3.1.0
+info:
+  title: Skoll Backend API
+  version: 0.1.0
+  description: |
+    HTTP + SSE API for Skoll.
+    This file is the source of truth — TS types and Pydantic models are generated from it.
+  license:
+    name: AGPL-3.0-or-later
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local dev
+
+tags:
+  - name: health
+  - name: sessions
+  - name: chat
+  - name: files
+  - name: tools
+  - name: workspace
+  - name: rag
+
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /api/sessions:
+    post:
+      tags: [sessions]
+      summary: Create a new agent session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+    get:
+      tags: [sessions]
+      summary: List sessions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+
+  /api/sessions/{session_id}:
+    get:
+      tags: [sessions]
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDetail"
+
+  /api/sessions/{session_id}/messages:
+    post:
+      tags: [chat]
+      summary: Send a message — opens an SSE stream
+      description: |
+        The response is `text/event-stream` (SSE).
+        Event types and payloads are defined in contracts/events.yaml.
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: See contracts/events.yaml for event types
+
+  /api/sessions/{session_id}/tool-calls/{tool_call_id}/approve:
+    post:
+      tags: [tools]
+      summary: Approve a pending tool call (with optional edited args)
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - in: path
+          name: tool_call_id
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolCallApproval"
+      responses:
+        "204": {description: Approved}
+
+  /api/sessions/{session_id}/tool-calls/{tool_call_id}/reject:
+    post:
+      tags: [tools]
+      summary: Reject a pending tool call
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - in: path
+          name: tool_call_id
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: {type: string}
+      responses:
+        "204": {description: Rejected}
+
+  /api/workspaces/{workspace_id}/files:
+    get:
+      tags: [files]
+      summary: List files in workspace
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - in: query
+          name: path
+          schema: {type: string, default: "."}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/FileEntry"}
+
+  /api/workspaces/{workspace_id}/files/content:
+    get:
+      tags: [files]
+      summary: Read a file (path-validated)
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - in: query
+          name: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContent"
+        "403":
+          description: Path outside workspace
+          $ref: "#/components/responses/Error"
+    put:
+      tags: [files]
+      summary: Write a file (path-validated)
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path: {type: string}
+                content: {type: string}
+      responses:
+        "204": {description: Written}
+
+  /api/workspaces/{workspace_id}/index:
+    post:
+      tags: [rag]
+      summary: Build RAG index over a workspace folder
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paths: {type: array, items: {type: string}}
+                embedding_model: {type: string}
+      responses:
+        "202":
+          description: Indexing started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexJob"
+
+  /ws/lsp/{language}:
+    get:
+      tags: [tools]
+      summary: WebSocket proxy to a language server
+      description: |
+        Upgrade to WebSocket. Forwards JSON-RPC messages to pylsp / typescript-language-server.
+        Used by monaco-languageclient on the frontend.
+      parameters:
+        - in: path
+          name: language
+          required: true
+          schema:
+            type: string
+            enum: [python, typescript, javascript]
+      responses:
+        "101": {description: Switching Protocols}
+
+components:
+  parameters:
+    SessionId:
+      in: path
+      name: session_id
+      required: true
+      schema: {type: string, format: uuid}
+    WorkspaceId:
+      in: path
+      name: workspace_id
+      required: true
+      schema: {type: string, format: uuid}
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, version]
+      properties:
+        status: {type: string, enum: [ok, degraded]}
+        version: {type: string}
+        lm_studio_reachable: {type: boolean}
+
+    Session:
+      type: object
+      required: [id, created_at, model]
+      properties:
+        id: {type: string, format: uuid}
+        title: {type: string}
+        created_at: {type: string, format: date-time}
+        model: {type: string}
+        workspace_id: {type: string, format: uuid, nullable: true}
+
+    SessionDetail:
+      allOf:
+        - $ref: "#/components/schemas/Session"
+        - type: object
+          properties:
+            messages:
+              type: array
+              items: {$ref: "#/components/schemas/Message"}
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        title: {type: string}
+        model: {type: string}
+        workspace_id: {type: string, format: uuid}
+        system_prompt_overrides: {type: object, additionalProperties: {type: string}}
+
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content: {type: string}
+        attachments:
+          type: array
+          items: {$ref: "#/components/schemas/Attachment"}
+
+    Message:
+      type: object
+      required: [id, role, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        role: {type: string, enum: [system, user, assistant, tool]}
+        content: {type: string, nullable: true}
+        tool_call_id: {type: string, nullable: true}
+        tool_calls:
+          type: array
+          nullable: true
+          items: {$ref: "#/components/schemas/ToolCall"}
+        created_at: {type: string, format: date-time}
+
+    ToolCall:
+      type: object
+      required: [id, name, arguments]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        arguments: {type: object, additionalProperties: true}
+        status:
+          type: string
+          enum: [pending_args, ready, awaiting_approval, executing, completed, failed, rejected]
+        result: {type: object, nullable: true, additionalProperties: true}
+        duration_ms: {type: integer, nullable: true}
+
+    ToolCallApproval:
+      type: object
+      properties:
+        edited_args: {type: object, nullable: true, additionalProperties: true}
+
+    Attachment:
+      type: object
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [file, image, url]}
+        path: {type: string}
+        url: {type: string, format: uri}
+
+    FileEntry:
+      type: object
+      required: [name, kind]
+      properties:
+        name: {type: string}
+        kind: {type: string, enum: [file, dir]}
+        size: {type: integer}
+        modified_at: {type: string, format: date-time}
+
+    FileContent:
+      type: object
+      required: [path, content, encoding]
+      properties:
+        path: {type: string}
+        content: {type: string}
+        encoding: {type: string, enum: [utf-8, base64]}
+        truncated: {type: boolean, default: false}
+
+    IndexJob:
+      type: object
+      required: [id, state]
+      properties:
+        id: {type: string, format: uuid}
+        state: {type: string, enum: [queued, running, completed, failed]}
+        progress: {type: number, minimum: 0, maximum: 1}
+        files_indexed: {type: integer}
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        details: {type: object, additionalProperties: true}

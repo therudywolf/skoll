@@ -1,0 +1,87 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.python-version
+.venv/
+venv/
+env/
+
+# --- uv ---
+uv.lock  # uncomment if you prefer not to commit the lock; default is COMMIT it
+
+# --- Node / pnpm ---
+node_modules/
+.pnpm-store/
+dist/
+build/
+.vite/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Editor / OS ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Secrets / local config ---
+.env
+.env.local
+.env.*.local
+.local/
+*.pem
+*.key
+secrets/
+
+# --- Local data ---
+*.sqlite
+*.sqlite-journal
+*.db
+data/
+.skoll_cache/
+faiss_index/
+uploads/
+workspaces/
+
+# --- Frontend artifacts ---
+frontend/dist/
+frontend/coverage/
+
+# --- Backend artifacts ---
+backend/dist/
+backend/build/
+
+# --- Vendored submodules — tracked via .gitmodules, not contents ---
+vendor/*/
+
+# --- Docker volumes ---
+.docker-data/
+
+# --- Generated from contracts/ ---
+frontend/src/lib/api/types.gen.ts
+backend/src/skoll/contracts/_generated/
+
+# --- Jupyter notebooks (don't ship .ipynb_checkpoints) ---
+.ipynb_checkpoints/
+
+# --- Bootstrap artifacts that live in the parent folder, not in the repo ---
+/skoll-handoff*.bundle
+/skoll-final*.bundle
+/apply-*.ps1
+/bootstrap-*.ps1
+/WolfIDE/

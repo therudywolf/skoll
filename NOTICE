@@ -1,0 +1,22 @@
+Sköll
+Copyright (C) 2026 Sköll contributors
+
+This product includes software developed as part of the following projects
+by the same author, licensed under AGPL-3.0-or-later, integrated as git
+submodules under vendor/ and partially ported into backend/src/skoll/:
+
+  - ForestOptiLM (https://github.com/therudywolf/ForestOptiLM)
+      Copyright (C) 2025 therudywolf
+      AGPL-3.0-or-later
+
+  - PhotoAISorter (https://github.com/therudywolf/PhotoAISorter)
+      Copyright (C) 2026 Photo AI Sorter contributors
+      AGPL-3.0-or-later
+
+Third-party dependencies are documented in THIRD_PARTY_NOTICES.md (to be
+generated from backend/pyproject.toml and frontend/package.json once the
+first release is cut).
+
+The project name "Sköll" references the wolf of Norse mythology and is
+used for branding purposes only; no claim of association with any other
+project of similar name is made.

@@ -1,0 +1,28 @@
+# Gitleaks config for Skoll
+# Extends the default rules with project-specific patterns.
+
+title = "Skoll gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "lm-studio-token"
+description = "LM Studio API token"
+regex = '''sk-lm-[a-zA-Z0-9]{8,}:[a-zA-Z0-9]{8,}'''
+tags = ["key", "lm-studio"]
+
+[[rules]]
+id = "jina-api-key"
+description = "Jina AI API key"
+regex = '''jina_[a-zA-Z0-9]{40,}'''
+tags = ["key", "jina"]
+
+[allowlist]
+description = "Allowlist for example/fixture files"
+paths = [
+  '''tests/fixtures/.*''',
+  '''examples/.*''',
+  '''docs/.*''',
+  '''\.env\.example''',
+]

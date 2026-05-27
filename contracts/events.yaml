@@ -1,0 +1,106 @@
+# SSE event types emitted by POST /api/sessions/{id}/messages
+# Each event has format: `event: <name>\ndata: <json>\n\n`
+
+events:
+
+  - name: message_start
+    description: Assistant message begins
+    schema:
+      type: object
+      required: [message_id, role]
+      properties:
+        message_id: {type: string, format: uuid}
+        role: {type: string, enum: [assistant]}
+
+  - name: text_delta
+    description: Streamed chunk of assistant text content
+    schema:
+      type: object
+      required: [delta]
+      properties:
+        delta: {type: string}
+
+  - name: tool_call_start
+    description: Model has decided on a tool to call
+    schema:
+      type: object
+      required: [tool_call_id, name]
+      properties:
+        tool_call_id: {type: string}
+        name: {type: string}
+
+  - name: tool_call_args_delta
+    description: Streamed chunk of tool call arguments (raw JSON string)
+    schema:
+      type: object
+      required: [tool_call_id, args_delta]
+      properties:
+        tool_call_id: {type: string}
+        args_delta: {type: string}
+
+  - name: tool_call_ready
+    description: Tool args complete and parsed; either auto-executing or awaiting approval
+    schema:
+      type: object
+      required: [tool_call_id, name, arguments, requires_approval]
+      properties:
+        tool_call_id: {type: string}
+        name: {type: string}
+        arguments: {type: object, additionalProperties: true}
+        requires_approval: {type: boolean}
+
+  - name: tool_call_approved
+    description: Human or auto-approve accepted the tool call
+    schema:
+      type: object
+      required: [tool_call_id]
+      properties:
+        tool_call_id: {type: string}
+        by: {type: string, enum: [user, auto]}
+        edited: {type: boolean, default: false}
+
+  - name: tool_call_rejected
+    description: Human rejected the tool call
+    schema:
+      type: object
+      required: [tool_call_id]
+      properties:
+        tool_call_id: {type: string}
+        reason: {type: string}
+
+  - name: tool_call_result
+    description: Tool execution finished
+    schema:
+      type: object
+      required: [tool_call_id, status, duration_ms]
+      properties:
+        tool_call_id: {type: string}
+        status: {type: string, enum: [completed, failed]}
+        result: {type: object, nullable: true, additionalProperties: true}
+        error: {type: string, nullable: true}
+        duration_ms: {type: integer}
+
+  - name: message_end
+    description: Assistant message stream complete
+    schema:
+      type: object
+      required: [stop_reason]
+      properties:
+        stop_reason:
+          type: string
+          enum: [end_of_turn, max_iterations, tool_rejection, error]
+
+  - name: error
+    description: Recoverable or fatal error during the stream
+    schema:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        recoverable: {type: boolean}
+
+  - name: ping
+    description: Keep-alive (every 15s), no payload
+    schema:
+      type: object

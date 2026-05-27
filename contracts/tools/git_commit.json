@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "git_commit",
+  "description": "Stage files and create a commit with a message. Requires approval — the diff and message are shown. Never pushes; use a separate tool / manual step for push.",
+  "phase": "3",
+  "kind": "vcs",
+  "requires_approval": true,
+  "auto_approve_default": false,
+  "path_args": [],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "paths": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Workspace-relative paths to stage. Use ['.'] for all changes."
+      },
+      "message": {
+        "type": "string",
+        "description": "Commit message in Conventional Commits format."
+      }
+    },
+    "required": ["paths", "message"],
+    "additionalProperties": false
+  },
+  "result_schema": {
+    "type": "object",
+    "required": ["commit_sha"],
+    "properties": {
+      "commit_sha": {"type": "string"},
+      "files_committed": {"type": "integer"}
+    }
+  }
+}
