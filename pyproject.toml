@@ -59,7 +59,10 @@ files = ["backend/src"]
 exclude = ["vendor/", "backend/src/skoll/contracts/_generated/"]
 
 [[tool.mypy.overrides]]
-module = ["faiss.*", "trafilatura.*", "duckduckgo_search.*"]
+module = [
+  "faiss.*", "trafilatura.*", "duckduckgo_search.*",
+  "pypdf.*", "docx.*", "openpyxl.*", "bs4.*", "lxml.*", "tiktoken.*",
+]
 ignore_missing_imports = true
 
 [tool.bandit]

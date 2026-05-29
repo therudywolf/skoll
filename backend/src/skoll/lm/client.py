@@ -359,9 +359,54 @@ class LMStudioClient:
         yield  # pragma: no cover  # for type checker
 
     async def embed(self, texts: list[str], model: str) -> list[list[float]]:
-        """POST /v1/embeddings or /api/v1/embeddings."""
-        # TODO(phase-1.7)
-        raise NotImplementedError
+        """Return one embedding vector per input text.
+
+        POSTs to the native (``/api/v1/embeddings``) or openai-compat
+        (``/v1/embeddings``) endpoint depending on ``api_mode``. Both shapes return
+        ``{"data": [{"embedding": [...]}, ...]}`` so a single parser handles them.
+
+        Inputs are sent in batches (LM Studio embedding servers cap request size);
+        each batch goes through :meth:`_request_json`, so transient 5xx / network
+        failures are retried and 4xx raises a non-retried ``LMStudioError`` — the
+        same error contract as :meth:`chat`. The Semaphore keeps concurrency at 1.
+        """
+        if not texts:
+            return []
+
+        # LM Studio embedding servers reject very large request bodies; batch them.
+        batch_size = 32
+        path = _NATIVE_EMBEDDINGS if self.api_mode == "native" else _OPENAI_EMBEDDINGS
+
+        vectors: list[list[float]] = []
+        async with self._semaphore:
+            for start in range(0, len(texts), batch_size):
+                batch = texts[start : start + batch_size]
+                payload: dict[str, Any] = {"model": model, "input": batch}
+                data = await self._request_json("POST", path, json_body=payload)
+                # Native and openai-compat both return {"data": [{"embedding": [...]}]}.
+                items = data.get("data")
+                if not isinstance(items, list):
+                    raise LMStudioError("LM Studio embeddings response missing a 'data' array")
+                batch_vectors: list[list[float]] = []
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    emb = item.get("embedding")
+                    if isinstance(emb, list):
+                        batch_vectors.append([float(v) for v in emb])
+                if len(batch_vectors) != len(batch):
+                    raise LMStudioError(
+                        f"Embedding batch size mismatch: expected {len(batch)} vectors, "
+                        f"got {len(batch_vectors)}"
+                    )
+                vectors.extend(batch_vectors)
+
+        if len(vectors) != len(texts):
+            raise LMStudioError(
+                f"Embedding response size mismatch: expected {len(texts)} vectors, "
+                f"got {len(vectors)}. Is an embeddings-capable model loaded in LM Studio?"
+            )
+        return vectors
 
 
 def extract_assistant_content(response: dict[str, Any]) -> str:

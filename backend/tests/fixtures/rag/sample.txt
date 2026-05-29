@@ -1,0 +1,3 @@
+Skoll is a local-first agentic web IDE for LM Studio.
+It runs entirely on local infrastructure with no cloud LLM APIs.
+The RAG pipeline indexes a workspace so the agent can search code.
