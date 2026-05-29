@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup/shutdown hook.
 
     Startup:

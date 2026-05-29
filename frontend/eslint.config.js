@@ -23,6 +23,9 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      // TypeScript already checks for undefined names; core no-undef yields false
+      // positives on type-only globals (e.g. JSX). See typescript-eslint guidance.
+      "no-undef": "off",
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "react-hooks/rules-of-hooks": "error",

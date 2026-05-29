@@ -1,5 +1,5 @@
 {
-  "name": "skoll-frontend",
+  "name": "frontend",
   "version": "0.1.0-alpha.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
     "gen:types": "openapi-typescript ../contracts/openapi.yaml -o src/lib/api/types.gen.ts"
   },
   "dependencies": {

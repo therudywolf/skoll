@@ -16,7 +16,7 @@ async def embed_chunks(
     *,
     model: str,
     cache_dir: str | None = None,
-) -> np.ndarray:  # type: ignore[type-arg]
+) -> np.ndarray:
     """Return (n_chunks, dim) numpy array."""
     # TODO(phase-1.7)
     raise NotImplementedError

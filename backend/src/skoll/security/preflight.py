@@ -17,7 +17,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from skoll.agent.tools.registry import Tool
 
 
 class PreflightResult(Enum):
@@ -34,9 +37,9 @@ class PreflightReport:
 
 
 async def check_tool_call(
-    tool: Any,  # forward ref to skoll.agent.tools.registry.Tool
+    tool: Tool,
     args: dict[str, Any],
-    session: Any,  # forward ref to a Session model
+    session: Any,  # noqa: ANN401 — DB Session model, typed in phase-1.15
 ) -> PreflightReport:
     """Run all preflight checks. Logs each to db.preflight_log."""
     # TODO(phase-1)

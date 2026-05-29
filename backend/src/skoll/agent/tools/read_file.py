@@ -6,10 +6,13 @@ Schema: contracts/tools/read_file.json.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from skoll.agent.tools.registry import ToolContext
 
 
-async def handler(args: dict[str, Any], context: Any) -> dict[str, Any]:
+async def handler(args: dict[str, Any], context: ToolContext) -> dict[str, Any]:
     """
     Steps:
       1. skoll.security.path.safe_resolve(args['path'], context.workspace_root)

@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from skoll.errors import PathOutsideWorkspaceError
-
 
 def safe_resolve(user_path: str, workspace_root: str | Path) -> Path:
     """Resolve a user-supplied path against workspace_root.

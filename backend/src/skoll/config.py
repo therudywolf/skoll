@@ -92,7 +92,7 @@ _settings: Settings | None = None
 
 def get_settings() -> Settings:
     """Return the cached settings instance."""
-    global _settings  # noqa: PLW0603
+    global _settings
     if _settings is None:
         _settings = Settings()
         _validate_production_safety(_settings)

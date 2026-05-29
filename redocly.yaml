@@ -1,0 +1,14 @@
+# Redocly lint config for contracts/openapi.yaml.
+#
+# Skoll is local-first and single-user (see docs/ARCHITECTURE.md §2, §6):
+# requests are trusted only from localhost and there is no auth layer by design,
+# so the API intentionally defines no security schemes.
+extends:
+  - minimal
+
+rules:
+  # No auth layer by design → operations cannot (and should not) reference a
+  # security scheme. Disable the rule rather than inventing a fake scheme.
+  security-defined: off
+  # Structural OpenAPI 3.1 conformance must stay an error.
+  spec: error

@@ -36,7 +36,7 @@ typecheck:
 
 test:
 	cd backend && uv run pytest -m "not integration"
-	pnpm --filter frontend test --run
+	pnpm --filter frontend test
 
 security:
 	cd backend && uv run bandit -r src -c ../pyproject.toml

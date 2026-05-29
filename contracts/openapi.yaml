@@ -272,7 +272,7 @@ components:
         title: {type: string}
         created_at: {type: string, format: date-time}
         model: {type: string}
-        workspace_id: {type: string, format: uuid, nullable: true}
+        workspace_id: {type: [string, "null"], format: uuid}
 
     SessionDetail:
       allOf:
@@ -306,11 +306,10 @@ components:
       properties:
         id: {type: string, format: uuid}
         role: {type: string, enum: [system, user, assistant, tool]}
-        content: {type: string, nullable: true}
-        tool_call_id: {type: string, nullable: true}
+        content: {type: [string, "null"]}
+        tool_call_id: {type: [string, "null"]}
         tool_calls:
-          type: array
-          nullable: true
+          type: [array, "null"]
           items: {$ref: "#/components/schemas/ToolCall"}
         created_at: {type: string, format: date-time}
 
@@ -324,13 +323,13 @@ components:
         status:
           type: string
           enum: [pending_args, ready, awaiting_approval, executing, completed, failed, rejected]
-        result: {type: object, nullable: true, additionalProperties: true}
-        duration_ms: {type: integer, nullable: true}
+        result: {type: [object, "null"], additionalProperties: true}
+        duration_ms: {type: [integer, "null"]}
 
     ToolCallApproval:
       type: object
       properties:
-        edited_args: {type: object, nullable: true, additionalProperties: true}
+        edited_args: {type: [object, "null"], additionalProperties: true}
 
     Attachment:
       type: object

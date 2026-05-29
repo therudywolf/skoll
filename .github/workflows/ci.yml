@@ -23,9 +23,9 @@ jobs:
           submodules: recursive
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v5
         with:
-          version: "0.4.18"
+          version: "0.11.17"
 
       - name: Set up Python
         run: uv python install 3.12
@@ -87,7 +87,7 @@ jobs:
         run: pnpm --filter frontend lint
 
       - name: Test
-        run: pnpm --filter frontend test --run
+        run: pnpm --filter frontend test
 
       - name: Build
         run: pnpm --filter frontend build
@@ -120,6 +120,10 @@ jobs:
           node-version: "20.11"
       - name: Validate OpenAPI
         run: npx --yes @redocly/cli@1.25.5 lint contracts/openapi.yaml
-      - name: Validate tool JSON Schemas
+      - name: Validate tool descriptors against the meta-schema
         run: |
-          npx --yes ajv-cli@5.0.0 compile -s contracts/tools/*.json
+          for f in contracts/tools/*.json; do
+            echo "validating $f"
+            npx --yes ajv-cli@5.0.0 validate --spec=draft2020 \
+              -s contracts/tool-descriptor.schema.json -d "$f"
+          done

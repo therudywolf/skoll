@@ -7,12 +7,15 @@ Backed by: skoll.rag.retrieval
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from skoll.agent.tools.registry import ToolContext
 
 # from skoll.agent.tools.registry import Tool, ToolContext, ToolSchema  # to be wired
 
 
-async def handler(args: dict[str, Any], context: Any) -> dict[str, Any]:
+async def handler(args: dict[str, Any], context: ToolContext) -> dict[str, Any]:
     """
     args = {query: str, top_k: int = 5, path_filter: str | None}
 

@@ -30,14 +30,16 @@ select = [
   "RUF",          # ruff-specific
 ]
 ignore = [
-  "ANN101",       # missing type for `self`
-  "ANN102",       # missing type for `cls`
   "S101",         # assert allowed in tests (we override per-file)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = ["S101", "ANN"]
 "examples/**" = ["ANN"]
+
+[tool.ruff.lint.flake8-annotations]
+# `*args: Any` / `**kwargs: Any` are legitimate passthroughs (e.g. to the LM Studio SDK).
+allow-star-arg-any = true
 
 [tool.ruff.format]
 quote-style = "double"

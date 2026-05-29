@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skoll.dev/contracts/tool-descriptor.schema.json",
+  "title": "Skoll tool descriptor",
+  "description": "Envelope shape for each contracts/tools/*.json file. The backend tool registry and the frontend ToolCallCard both read these. `parameters` and `result_schema` are themselves JSON Schemas passed to LM Studio / used to validate results.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "description",
+    "phase",
+    "kind",
+    "requires_approval",
+    "auto_approve_default",
+    "path_args",
+    "parameters",
+    "result_schema"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "description": { "type": "string", "minLength": 1 },
+    "phase": { "type": "string", "enum": ["1", "2", "3"] },
+    "kind": {
+      "type": "string",
+      "enum": ["read", "write", "shell", "url_fetch", "vision", "vcs"]
+    },
+    "requires_approval": { "type": "boolean" },
+    "auto_approve_default": { "type": "boolean" },
+    "path_args": { "type": "array", "items": { "type": "string" } },
+    "parameters": { "type": "object" },
+    "result_schema": { "type": "object" }
+  }
+}
