@@ -10,6 +10,7 @@ do not directly import (sync vs async).
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -129,6 +130,131 @@ def _parse_model_item(item: dict[str, Any]) -> LMStudioModel | None:
         ),
         capabilities=_coerce_capabilities(item.get("capabilities")),
     )
+
+
+# Sentinel object returned by `_parse_sse_line` for the terminal `data: [DONE]` line.
+# A distinct object (not None) so it is unambiguous against "ignore this line" (None).
+_DONE_SENTINEL = ChatCompletionDelta(
+    text_delta=None,
+    tool_call_index=None,
+    tool_call_id=None,
+    tool_call_name=None,
+    tool_call_args_delta=None,
+    finish_reason=None,
+)
+
+
+def _parse_sse_line(line: str) -> ChatCompletionDelta | None:
+    """Parse one raw SSE line from an LM Studio stream into a delta.
+
+    Returns:
+      - ``_DONE_SENTINEL`` for the terminal ``data: [DONE]`` line,
+      - a :class:`ChatCompletionDelta` for a parseable ``data: {json}`` chunk,
+      - ``None`` for blank lines, comments (``:`` keep-alives), non-``data:`` fields,
+        or a ``data:`` whose JSON is unusable — the caller skips these.
+
+    Only the first choice is read. Both the openai-compat shape
+    (``choices[0].delta.{content,tool_calls}``) and native variants that nest the same
+    fields under ``message`` are handled.
+    """
+    stripped = line.strip()
+    if not stripped or stripped.startswith(":"):
+        # Blank separator line or an SSE comment / keep-alive.
+        return None
+    if not stripped.startswith("data:"):
+        # `event:` / `id:` / `retry:` fields carry no completion payload for us.
+        return None
+
+    data = stripped[len("data:") :].strip()
+    if data == "[DONE]":
+        return _DONE_SENTINEL
+    try:
+        chunk = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(chunk, dict):
+        return None
+
+    return _delta_from_chunk(chunk)
+
+
+def _delta_from_chunk(chunk: dict[str, Any]) -> ChatCompletionDelta | None:
+    """Extract a :class:`ChatCompletionDelta` from one parsed streaming chunk.
+
+    Returns ``None`` if the chunk carries no choices. A chunk with a choice but no
+    incremental payload (e.g. a lone ``finish_reason``) still yields a delta so the caller
+    learns the turn ended.
+    """
+    choices = chunk.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    first = choices[0]
+    if not isinstance(first, dict):
+        return None
+
+    finish_reason = first.get("finish_reason")
+    finish_str = finish_reason if isinstance(finish_reason, str) else None
+
+    # openai-compat uses `delta`; some native builds use `message` for the same fields.
+    payload = first.get("delta")
+    if not isinstance(payload, dict):
+        payload = first.get("message")
+    if not isinstance(payload, dict):
+        payload = {}
+
+    text = payload.get("content")
+    text_delta = text if isinstance(text, str) and text != "" else None
+
+    (
+        tc_index,
+        tc_id,
+        tc_name,
+        tc_args,
+    ) = _extract_tool_call_fragment(payload.get("tool_calls"))
+
+    return ChatCompletionDelta(
+        text_delta=text_delta,
+        tool_call_index=tc_index,
+        tool_call_id=tc_id,
+        tool_call_name=tc_name,
+        tool_call_args_delta=tc_args,
+        finish_reason=finish_str,
+    )
+
+
+def _extract_tool_call_fragment(
+    tool_calls: object,
+) -> tuple[int | None, str | None, str | None, str | None]:
+    """Pull the (index, id, name, args_delta) fragment from a streaming ``tool_calls``.
+
+    LM Studio streams at most one tool-call fragment per chunk (the openai-compat
+    convention); we read the first element. ``index`` defaults to 0 when absent so a
+    single-tool stream that omits it still lands in a stable slot.
+    """
+    if not isinstance(tool_calls, list) or not tool_calls:
+        return (None, None, None, None)
+    entry = tool_calls[0]
+    if not isinstance(entry, dict):
+        return (None, None, None, None)
+
+    raw_index = entry.get("index")
+    index = raw_index if isinstance(raw_index, int) and not isinstance(raw_index, bool) else 0
+
+    call_id_raw = entry.get("id")
+    call_id = call_id_raw if isinstance(call_id_raw, str) and call_id_raw else None
+
+    name: str | None = None
+    args_delta: str | None = None
+    function = entry.get("function")
+    if isinstance(function, dict):
+        fn_name = function.get("name")
+        if isinstance(fn_name, str) and fn_name:
+            name = fn_name
+        fn_args = function.get("arguments")
+        if isinstance(fn_args, str) and fn_args != "":
+            args_delta = fn_args
+
+    return (index, call_id, name, args_delta)
 
 
 class LMStudioClient:
@@ -349,14 +475,87 @@ class LMStudioClient:
     ) -> AsyncIterator[ChatCompletionDelta]:
         """Streaming chat completion. Yields one delta per SSE event from LM Studio.
 
-        Implementation must handle:
-          - partial `tool_calls[].function.arguments` chunks (string accumulation)
-          - mid-stream disconnects (raise, let caller decide on reconnect)
-          - `<think>` block stripping if reasoning_off was requested but model leaked CoT
+        Opens an SSE stream against the native (``/api/v1/chat``) or openai-compat
+        (``/v1/chat/completions``) endpoint with ``"stream": true``, parses each
+        ``data:`` line into a :class:`ChatCompletionDelta`, and yields it. The terminal
+        ``data: [DONE]`` sentinel ends the stream cleanly.
+
+        Implementation notes:
+          - partial ``tool_calls[].function.arguments`` arrive as a growing string across
+            chunks; we surface each fragment as ``tool_call_args_delta`` and let the caller
+            (ToolCallAccumulator) buffer until the JSON parses — we never parse here.
+          - the per-call ``index`` disambiguates parallel tool calls.
+          - mid-stream disconnect (the transport drops before ``[DONE]`` / a finish_reason)
+            raises ``LMStudioUnreachableError`` so the caller can decide on reconnect.
+          - reasoning models (or an explicit ``reasoning_off``) get the endpoint-appropriate
+            reasoning switch so a ``<think>`` chain never pollutes the tool-call JSON.
+          - concurrency to a single LM Studio instance stays at 1 via the Semaphore, held for
+            the whole stream.
+
+        This method is NOT wrapped by the tenacity retry on ``_request_json`` — a partially
+        consumed stream cannot be safely replayed, so reconnect is the caller's decision.
         """
-        # TODO(phase-1.1)
-        raise NotImplementedError
-        yield  # pragma: no cover  # for type checker
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        }
+        if tools:
+            payload["tools"] = tools
+        if reasoning_off or is_reasoning(model):
+            if self.api_mode == "native":
+                payload["reasoning"] = "off"
+            else:
+                payload["reasoning_effort"] = "off"
+        for key, value in kwargs.items():
+            if key != "stream":
+                payload[key] = value
+
+        # The Semaphore is held for the entire stream — LM Studio serializes one
+        # generation at a time per instance (AGENTS.md §7.6).
+        async with self._semaphore:
+            try:
+                async with self._client.stream("POST", self._chat_path, json=payload) as response:
+                    if response.status_code >= 400:
+                        # Buffer the body so `.text` (used by `_raise_for_status`) is
+                        # populated — httpx caches the read content on the response.
+                        await response.aread()
+                        if response.status_code >= 500:
+                            logger.warning(
+                                "lmstudio.stream_server_error",
+                                path=self._chat_path,
+                                status_code=response.status_code,
+                            )
+                            raise LMStudioUnreachableError(
+                                f"LM Studio server error (HTTP {response.status_code})"
+                            )
+                        self._raise_for_status(response)
+
+                    saw_terminal = False
+                    async for line in response.aiter_lines():
+                        delta = _parse_sse_line(line)
+                        if delta is _DONE_SENTINEL:
+                            saw_terminal = True
+                            break
+                        if delta is None:
+                            continue
+                        if delta.finish_reason is not None:
+                            saw_terminal = True
+                        yield delta
+            except httpx.TransportError as exc:
+                # Connection dropped mid-stream (or could not be established). The caller
+                # decides whether to reconnect; we do not silently swallow partial output.
+                logger.warning(
+                    "lmstudio.stream_transport_error", path=self._chat_path, error=str(exc)
+                )
+                raise LMStudioUnreachableError(f"LM Studio stream disconnected: {exc!s}") from exc
+
+        if not saw_terminal:
+            # Stream closed without [DONE] or a finish_reason — treat as a mid-stream
+            # disconnect so the caller does not mistake a truncated turn for a clean one.
+            raise LMStudioUnreachableError(
+                "LM Studio stream ended before completion (no finish_reason / [DONE])"
+            )
 
     async def embed(self, texts: list[str], model: str) -> list[list[float]]:
         """Return one embedding vector per input text.

@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from skoll.api import chat, health
+from skoll.api import chat, health, sessions
 from skoll.config import get_settings
 from skoll.log import (
     bind_request_id,
@@ -131,6 +131,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/api", tags=["health"])
     app.include_router(chat.router, prefix="/api", tags=["chat"])
+    app.include_router(sessions.router, prefix="/api", tags=["sessions"])
 
     # Middleware is applied bottom-up: the LAST added runs OUTERMOST. We want the
     # request-id binding to wrap everything (so even CORS-rejected requests are logged
