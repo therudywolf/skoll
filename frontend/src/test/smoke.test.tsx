@@ -1,15 +1,28 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { App } from "@/App";
 import type { ChatRequest, ChatResponse } from "@/lib/api/client";
+import { useChat } from "@/stores/chat";
 import { useSession } from "@/stores/session";
+
+beforeEach(() => {
+  // The chat store is a module-level singleton; reset it so turns from one
+  // test never leak into the next.
+  useChat.getState().reset();
+});
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+/** The chat composer textarea, addressed by its accessible name so it is not
+ *  confused with the (read-only) Monaco editor textarea. */
+function messageBox(): HTMLElement {
+  return screen.getByRole("textbox", { name: "Message" });
+}
 
 describe("session store", () => {
   it("starts with no session and updates on set", () => {
@@ -27,15 +40,21 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Skoll" }).textContent).toBe("Skoll");
   });
 
+  it("renders both the editor and chat panes", () => {
+    render(<App />);
+    expect(screen.getByRole("region", { name: "Editor" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Chat" })).toBeInTheDocument();
+  });
+
   it("disables Send until the textarea has non-whitespace input", () => {
     render(<App />);
     const button = screen.getByRole("button", { name: "Send" });
     expect(button).toBeDisabled();
 
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "   " } });
+    fireEvent.change(messageBox(), { target: { value: "   " } });
     expect(button).toBeDisabled();
 
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "hello" } });
+    fireEvent.change(messageBox(), { target: { value: "hello" } });
     expect(button).toBeEnabled();
   });
 
@@ -53,7 +72,7 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "hi there" } });
+    fireEvent.change(messageBox(), { target: { value: "hi there" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() => {
@@ -87,7 +106,7 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "hi there" } });
+    fireEvent.change(messageBox(), { target: { value: "hi there" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() => {
