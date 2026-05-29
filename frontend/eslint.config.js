@@ -5,6 +5,8 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 
 export default [
+  // Build output and deps are not linted (flat config ignores `.gitignore`).
+  { ignores: ["dist/**", "node_modules/**", "coverage/**"] },
   js.configs.recommended,
   {
     files: ["src/**/*.{ts,tsx}"],

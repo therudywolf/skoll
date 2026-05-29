@@ -58,7 +58,8 @@ body,
 }
 
 .chat-input,
-.chat-output {
+.chat-output,
+.chat-error {
   background: var(--bg-elevated);
   color: var(--fg);
   border: 1px solid var(--border);
@@ -68,9 +69,26 @@ body,
   font-size: 13px;
 }
 
-.chat-output {
+.chat-output,
+.chat-error {
   white-space: pre-wrap;
   min-height: 120px;
+}
+
+.chat-error {
+  border-color: #f85149;
+  color: #ff9492;
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
 }
 
 button {

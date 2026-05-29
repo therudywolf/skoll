@@ -8,14 +8,36 @@
 
 import { useState } from "react";
 
+import { ApiError, postChat } from "@/lib/api/client";
+
 export function App(): JSX.Element {
   const [input, setInput] = useState("");
   const [response, setResponse] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // TODO(phase-0.5): wire to POST /api/chat
+  const canSend = !loading && input.trim().length > 0;
+
   // TODO(phase-1.1): switch to SSE consumer (see @/lib/sse.ts)
   async function handleSend(): Promise<void> {
-    setResponse("(not implemented — see phase-0.5 issue)");
+    if (!canSend) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setResponse("");
+    try {
+      const result = await postChat(input);
+      setResponse(result.content);
+    } catch (err) {
+      const message =
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Unexpected error contacting the backend.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -32,11 +54,20 @@ export function App(): JSX.Element {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask the agent…"
           rows={6}
+          disabled={loading}
         />
-        <button type="button" onClick={() => void handleSend()}>
-          Send
+        <button type="button" onClick={() => void handleSend()} disabled={!canSend}>
+          {loading ? "Sending…" : "Send"}
         </button>
-        <pre className="chat-output">{response}</pre>
+        {error ? (
+          <pre className="chat-error" role="alert">
+            {error}
+          </pre>
+        ) : (
+          <pre className="chat-output" aria-busy={loading}>
+            {loading ? "Waiting for response…" : response}
+          </pre>
+        )}
       </main>
     </div>
   );
