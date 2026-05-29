@@ -99,12 +99,53 @@ def get_settings() -> Settings:
     return _settings
 
 
+# Hosts considered "local" for the production-safety gate. 0.0.0.0 is deliberately
+# excluded — it is not a valid client target and would weaken the non-localhost check.
+_LOCALHOST_HOSTS: frozenset[str] = frozenset(
+    {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
+)
+
+
+def _host_is_local(base_url: str) -> bool:
+    """True if the URL's host is a loopback / local-dev host."""
+    from urllib.parse import urlparse
+
+    host = (urlparse(base_url).hostname or "").lower()
+    return host in _LOCALHOST_HOSTS
+
+
 def _validate_production_safety(s: Settings) -> None:
     """Refuse to start in unsafe configurations unless dev_mode is true.
 
-    Implementation: see Issue phase-0.6.
+    Implementation: see Issue phase-0.6. This is THE production-safety gate.
+      - non-gVisor sandbox runtime (runc/kata) without dev_mode  -> ConfigError
+      - auto-approving exec tools without dev_mode               -> loud warning
+      - non-localhost LM Studio base_url without dev_mode        -> ConfigError
     """
-    # TODO(phase-0.6):
-    #   - if sandbox.runtime != 'runsc' and not dev_mode → raise
-    #   - if agent.auto_approve_exec_tools and not dev_mode → log loud warning
-    #   - if lmstudio.base_url not in localhost AND not dev_mode → require explicit opt-in
+    import structlog
+
+    from skoll.errors import ConfigError
+
+    log = structlog.get_logger(__name__)
+
+    if s.sandbox.runtime != "runsc" and not s.dev_mode:
+        raise ConfigError(
+            f"Sandbox runtime {s.sandbox.runtime!r} is unsafe in production; "
+            "gVisor ('runsc') is required. Set SKOLL_DEV_MODE=true to override for local dev."
+        )
+
+    if s.agent.auto_approve_exec_tools and not s.dev_mode:
+        log.warning(
+            "config.unsafe.auto_approve_exec_tools",
+            message=(
+                "auto_approve_exec_tools is ENABLED without dev_mode — the agent can run "
+                "commands with no human approval. This is strongly discouraged in production."
+            ),
+        )
+
+    if not _host_is_local(s.lmstudio.base_url) and not s.dev_mode:
+        raise ConfigError(
+            "LM Studio base_url points at a non-localhost host "
+            f"({s.lmstudio.base_url!r}); refusing to start. Set SKOLL_DEV_MODE=true to "
+            "opt in to a remote LM Studio endpoint."
+        )
