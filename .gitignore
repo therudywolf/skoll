@@ -84,4 +84,5 @@ backend/src/skoll/contracts/_generated/
 /skoll-final*.bundle
 /apply-*.ps1
 /bootstrap-*.ps1
-/WolfIDE/
+/push-to-github.ps1
+/skoll-recovery-backup*/
