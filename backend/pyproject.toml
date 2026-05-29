@@ -34,11 +34,11 @@ dependencies = [
 
   # File extractors (adapted from ForestOptiLM)
   "trafilatura>=1.12,<2.0",
-  "pypdf>=4.3,<5.0",
+  "pypdf>=6.7.2,<7.0",          # 4.x had many CVEs (CVE-2025-55197 … CVE-2026-27628)
   "python-docx>=1.1,<2.0",
   "openpyxl>=3.1,<4.0",
   "beautifulsoup4>=4.12,<5.0",
-  "lxml>=5.3,<6.0",
+  "lxml>=6.1,<7.0",             # 5.x flagged by PYSEC-2026-87
 
   # Search
   "duckduckgo-search>=6.2,<7.0",
