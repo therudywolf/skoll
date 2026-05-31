@@ -36,6 +36,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = ["S101", "ANN"]
 "examples/**" = ["ANN"]
+# session.py is a thin Docker subprocess controller: per-call `timeout` params
+# (ASYNC109) and one startup-time local path resolve/stat (ASYNC240) are deliberate.
+"backend/src/skoll/sandbox/session.py" = ["ASYNC109", "ASYNC240", "S108"]
 
 [tool.ruff.lint.flake8-annotations]
 # `*args: Any` / `**kwargs: Any` are legitimate passthroughs (e.g. to the LM Studio SDK).

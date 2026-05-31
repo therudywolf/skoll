@@ -1,0 +1,74 @@
+{
+  "_comment": "Skoll sandbox seccomp profile. Layered hardening ON TOP OF the runtime boundary (gVisor 'runsc' in prod, runc in dev). Default action is ALLOW; we explicitly ERRNO the syscall families an agent shell never legitimately needs and that are the usual ingredients of container-escape / privilege-escalation chains. Under runsc the gVisor user-space kernel is the primary boundary and most of these are not even reachable; under runc this profile is meaningful defence in depth. Pass to docker via --security-opt seccomp=sandbox/seccomp.json. NOTE: do NOT add a profile narrower than this without testing build-essential / git / pip, which need a broad syscall surface.",
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "archMap": [
+    {
+      "architecture": "SCMP_ARCH_X86_64",
+      "subArchitectures": ["SCMP_ARCH_X86", "SCMP_ARCH_X32"]
+    },
+    {
+      "architecture": "SCMP_ARCH_AARCH64",
+      "subArchitectures": ["SCMP_ARCH_ARM"]
+    }
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "acct",
+        "add_key",
+        "bpf",
+        "clock_adjtime",
+        "clock_settime",
+        "create_module",
+        "delete_module",
+        "finit_module",
+        "get_kernel_syms",
+        "init_module",
+        "kcmp",
+        "kexec_file_load",
+        "kexec_load",
+        "keyctl",
+        "lookup_dcookie",
+        "mount",
+        "move_mount",
+        "nfsservctl",
+        "open_by_handle_at",
+        "perf_event_open",
+        "pivot_root",
+        "query_module",
+        "quotactl",
+        "reboot",
+        "request_key",
+        "settimeofday",
+        "swapoff",
+        "swapon",
+        "_sysctl",
+        "umount",
+        "umount2",
+        "uselib",
+        "userfaultfd",
+        "vm86",
+        "vm86old"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1,
+      "comment": "Module loading, kernel tuning, mount manipulation, time/clock changes, and other CAP_SYS_ADMIN-class operations. An agent shell never needs these; they are common escape primitives."
+    },
+    {
+      "names": ["setns"],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1,
+      "comment": "Joining an existing namespace. Never needed by an agent shell. NOTE: we intentionally do NOT block clone/unshare here — clone() with SIGCHLD is how glibc implements fork(), so an unconditional block would break bash/git/pip entirely. Namespace *creation* is instead prevented by --cap-drop=ALL (CLONE_NEWUSER/NEWNS/NEWNET require CAP_SYS_ADMIN, which we drop), which is the correct and robust control."
+    },
+    {
+      "names": [
+        "ptrace",
+        "process_vm_readv",
+        "process_vm_writev"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1,
+      "comment": "Cross-process memory inspection / debugging. Not needed for build+test; denies a class of in-container snooping and breakout-assist techniques."
+    }
+  ]
+}
