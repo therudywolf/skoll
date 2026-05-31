@@ -165,10 +165,11 @@ async def test_execute_validates_before_invoking_handler() -> None:
 
 
 async def test_execute_invokes_handler_after_validation() -> None:
-    # With valid args, execution reaches the stub handler which raises NotImplementedError.
+    # Valid args pass validation and reach the real read_file handler, which then
+    # fails on the absent target — proving execution got past validation into the tool.
     reg = _load_phase1()
     ctx = ToolContext(session_id="s1", workspace_root=WS_ROOT)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ToolError):
         await reg.execute("read_file", {"path": "src/auth.py"}, ctx)
 
 
